@@ -80,7 +80,9 @@ class Needle3InferenceEngine:
         neural_success = False
         neural_fields_extracted = []
 
-        is_heuristic_requested = getattr(req, "model_name", "needle-3-local") == "needle-3-heuristic"
+        is_heuristic_requested = getattr(req, "model_name", "needle-3-local") in (
+            "needle-3-heuristic", "fast", "heuristic"
+        )
 
         # 1. Neural Extraction using official Cactus Needle 3 model weights
         if NEEDLE3_AVAILABLE and not is_heuristic_requested:

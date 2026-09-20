@@ -53,6 +53,7 @@ const INITIAL_QUICK_FORM: QuickArtisanOnboardingForm = {
 
 export function App() {
   const [mode, setMode] = useState<'quick' | 'full'>('quick');
+  const [engineMode, setEngineMode] = useState<'fast' | 'neural'>('fast');
   const [inputText, setInputText] = useState('');
   const [samplePrompts, setSamplePrompts] = useState<SamplePrompt[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
@@ -120,7 +121,10 @@ export function App() {
       const res = await fetch('/api/extract-artisan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText, model_name: 'needle-3-local' })
+        body: JSON.stringify({
+          text: inputText,
+          model_name: engineMode === 'neural' ? 'needle-3-local' : 'needle-3-heuristic'
+        })
       });
 
       if (!res.ok) {
@@ -341,17 +345,51 @@ export function App() {
 
           {/* Text Input Panel */}
           <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex-1 flex flex-col shadow-sm">
-            <div className="flex items-center justify-between mb-2">
+            {/* Header: Label + Engine Mode Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-orange-400" />
                 Raw Artisan Narrative / Voice Transcript
               </label>
-              <button
-                onClick={() => setInputText('')}
-                className="text-[11px] text-slate-500 hover:text-slate-300 transition cursor-pointer"
-              >
-                Clear
-              </button>
+
+              {/* Extraction Engine Toggle */}
+              <div className="flex items-center gap-2">
+                <div className="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setEngineMode('fast')}
+                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer flex items-center gap-1 ${
+                      engineMode === 'fast'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Instant regex & domain cluster lookup (~50ms)"
+                  >
+                    <Zap className="w-3 h-3 text-emerald-400" />
+                    ⚡ Fast Mode (~50ms)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEngineMode('neural')}
+                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer flex items-center gap-1 ${
+                      engineMode === 'neural'
+                        ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Real on-device Cactus Needle 3 foundation model inference (~15-25s)"
+                  >
+                    <Bot className="w-3 h-3 text-orange-400" />
+                    🧠 Needle 3 Neural
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setInputText('')}
+                  className="text-[11px] text-slate-500 hover:text-slate-300 transition cursor-pointer px-1"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
 
             <textarea
@@ -368,21 +406,30 @@ export function App() {
             <div className="mt-4 flex items-center justify-between gap-3">
               <div className="text-xs text-slate-500">
                 {inputText.trim().split(/\s+/).filter(Boolean).length} words • {inputText.length} chars
+                {engineMode === 'neural' && (
+                  <span className="ml-2 text-amber-400/80 font-mono text-[11px] hidden sm:inline">
+                    (Neural token generation takes ~15s on CPU)
+                  </span>
+                )}
               </div>
               <button
                 disabled={isExtracting || !inputText.trim()}
                 onClick={handleExtract}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                  engineMode === 'neural'
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-orange-500/25'
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25'
+                }`}
               >
                 {isExtracting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Extracting with Needle 3...
+                    {engineMode === 'neural' ? 'Running Needle 3 Neural...' : 'Extracting (Fast)...'}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Extract to Form
+                    {engineMode === 'neural' ? 'Extract with Needle 3 Neural' : 'Instant Extract (Fast)'}
                   </>
                 )}
               </button>
