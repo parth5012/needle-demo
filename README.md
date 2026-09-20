@@ -6,6 +6,21 @@ Working full-stack prototype for **zero-shot unstructured text to structured for
 ![Domain](https://img.shields.io/badge/Domain-Artify%20Bharat-emerald?style=flat-square)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%7C%20uv-blue?style=flat-square)
 ![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%7C%20Tailwind-purple?style=flat-square)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fparth5012%2Fneedle-demo)
+
+---
+
+## ⚡ 1-Click Deploy to Vercel
+
+Click the button above or deploy directly using the Vercel CLI:
+
+```bash
+vercel
+```
+
+The monorepo configuration in `vercel.json` automatically builds and serves:
+- **Frontend SPA**: React 19 + Tailwind CSS static bundle.
+- **Backend Serverless Functions**: FastAPI Python runtime under `/api/*`.
 
 ---
 
