@@ -11,6 +11,11 @@ class ExtractedFieldMeta(BaseModel):
     confidence: float = Field(0.0, ge=0.0, le=1.0)
     source_segment: Optional[str] = None
 
+class QuickArtisanOnboardingForm(BaseModel):
+    name: Optional[str] = Field(None, description="Full name of artisan")
+    phone: Optional[str] = Field(None, description="10-digit mobile contact number")
+    pehchan_id: Optional[str] = Field(None, description="Government Pehchan card identifier")
+
 class ArtisanOnboardingForm(BaseModel):
     name: Optional[str] = Field(None, description="Full name of artisan")
     phone: Optional[str] = Field(None, description="10-digit mobile contact number")
@@ -29,6 +34,7 @@ class ArtisanOnboardingForm(BaseModel):
 
 class ExtractionResponse(BaseModel):
     form_data: ArtisanOnboardingForm
+    quick_form_data: Optional[QuickArtisanOnboardingForm] = None
     field_metadata: Dict[str, ExtractedFieldMeta] = {}
     model_used: str = "needle-3-local"
     processing_time_ms: float = 0.0

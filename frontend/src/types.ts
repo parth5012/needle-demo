@@ -15,6 +15,12 @@ export interface ArtisanOnboardingForm {
   skills_summary: string | null;
 }
 
+export interface QuickArtisanOnboardingForm {
+  name: string | null;
+  phone: string | null;
+  pehchan_id: string | null;
+}
+
 export interface ExtractedFieldMeta {
   value: any;
   confidence: number;
@@ -29,6 +35,7 @@ export interface ExtractedEntity {
 
 export interface ExtractionResponse {
   form_data: ArtisanOnboardingForm;
+  quick_form_data?: QuickArtisanOnboardingForm;
   field_metadata: Record<string, ExtractedFieldMeta>;
   model_used: string;
   processing_time_ms: number;

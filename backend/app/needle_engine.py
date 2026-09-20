@@ -3,6 +3,7 @@ import time
 from typing import Dict, Any, Tuple, Optional
 from app.schemas import (
     ArtisanOnboardingForm,
+    QuickArtisanOnboardingForm,
     ExtractionRequest,
     ExtractionResponse,
     ExtractedFieldMeta,
@@ -162,12 +163,19 @@ class Needle3InferenceEngine:
             skills_summary=get_val("skills_summary"),
         )
 
+        quick_form = QuickArtisanOnboardingForm(
+            name=get_val("name"),
+            phone=get_val("phone"),
+            pehchan_id=get_val("pehchan_id"),
+        )
+
         confidences = [f.confidence for f in fields.values() if f.value is not None]
         overall_conf = round(sum(confidences) / max(len(confidences), 1), 2)
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         return ExtractionResponse(
             form_data=form,
+            quick_form_data=quick_form,
             field_metadata=fields,
             model_used=req.model_name or "needle-3-local",
             processing_time_ms=elapsed_ms,

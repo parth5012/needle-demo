@@ -24,8 +24,24 @@ def test_api_extract_artisan_endpoint():
     assert data["form_data"]["name"] == "Ramesh Gowda"
     assert data["form_data"]["phone"] == "9123456780"
     assert data["form_data"]["cluster_name"] == "Channapatna Craft Cluster"
+    assert data["quick_form_data"]["name"] == "Ramesh Gowda"
+    assert data["quick_form_data"]["phone"] == "9123456780"
+    assert data["quick_form_data"]["pehchan_id"] == "PEH-KA-44912"
     assert "field_metadata" in data
     assert data["processing_time_ms"] > 0
+
+def test_api_submit_quick_onboarding():
+    quick_payload = {
+        "name": "Gauri Devi",
+        "phone": "9876543210",
+        "pehchan_id": "PEH-IND-88320"
+    }
+    res = client.post("/api/submit-quick-onboarding", json=quick_payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["verification_status"] == "verified"
+    assert data["profile"]["name"] == "Gauri Devi"
 
 def test_api_submit_onboarding_and_retrieve():
     form_payload = {
@@ -52,4 +68,4 @@ def test_api_submit_onboarding_and_retrieve():
     # List submissions
     list_res = client.get("/api/submissions")
     assert list_res.status_code == 200
-    assert list_res.json()["count"] >= 1
+    assert list_res.json()["count"] >= 2

@@ -7,6 +7,7 @@ from app.schemas import (
     ExtractionResponse,
     SamplePrompt,
     ArtisanOnboardingForm,
+    QuickArtisanOnboardingForm,
 )
 from app.needle_engine import Needle3InferenceEngine
 from app.sample_data import SAMPLE_PROMPTS
@@ -81,6 +82,30 @@ def submit_onboarding(form: ArtisanOnboardingForm):
     return {
         "success": True,
         "message": "Artisan onboarding profile successfully created in Artify Bharat registry.",
+        "artisan_id": submission["artisan_id"],
+        "verification_status": submission["verification_status"],
+        "profile": submission["data"]
+    }
+
+@app.post("/api/submit-quick-onboarding")
+def submit_quick_onboarding(form: QuickArtisanOnboardingForm):
+    """
+    Submits minimal artisan onboarding (Name, Phone, Pehchan ID).
+    """
+    if not form.name or not form.phone:
+        raise HTTPException(status_code=422, detail="Artisan Name and Phone are required.")
+
+    submission = {
+        "artisan_id": str(uuid.uuid4()),
+        "data": form.model_dump(),
+        "type": "quick_onboarding",
+        "status": "registered",
+        "verification_status": "verified" if form.pehchan_id else "pending_verification"
+    }
+    ONBOARDING_REGISTRY.append(submission)
+    return {
+        "success": True,
+        "message": "Quick artisan onboarding profile created.",
         "artisan_id": submission["artisan_id"],
         "verification_status": submission["verification_status"],
         "profile": submission["data"]
