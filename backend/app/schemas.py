@@ -5,6 +5,7 @@ class ExtractionRequest(BaseModel):
     text: str = Field(..., description="Raw unstructured natural language narrative or voice transcript of artisan")
     model_name: Optional[str] = Field("needle-3-local", description="Model backend identifier")
     strict_mode: Optional[bool] = Field(False, description="Whether to reject low-confidence fields")
+    quick_mode: Optional[bool] = Field(False, description="Whether to extract only the 3 essential quick fields (name, phone, pehchan_id)")
 
 class ExtractedFieldMeta(BaseModel):
     value: Optional[Any] = None

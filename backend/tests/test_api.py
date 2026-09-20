@@ -30,6 +30,20 @@ def test_api_extract_artisan_endpoint():
     assert "field_metadata" in data
     assert data["processing_time_ms"] > 0
 
+def test_api_extract_quick_artisan_endpoint():
+    prompt = "I am Parth, contact me at 9038749127, pehchan ID PEH-GJ-71231"
+    res = client.post("/api/extract-quick-artisan", json={"text": prompt, "model_name": "fast"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["quick_form_data"]["name"] == "Parth"
+    assert data["quick_form_data"]["phone"] == "9038749127"
+    assert data["quick_form_data"]["pehchan_id"] == "PEH-GJ-71231"
+    assert "name" in data["field_metadata"]
+    assert "phone" in data["field_metadata"]
+    assert "pehchan_id" in data["field_metadata"]
+    # Only 3 fields in quick mode
+    assert len(data["field_metadata"]) == 3
+
 def test_api_submit_quick_onboarding():
     quick_payload = {
         "name": "Gauri Devi",

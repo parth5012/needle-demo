@@ -9,7 +9,7 @@ from app.schemas import (
     ArtisanOnboardingForm,
     QuickArtisanOnboardingForm,
 )
-from app.needle_engine import Needle3InferenceEngine
+from app.needle_engine import Needle3InferenceEngine, Needle3QuickInferenceEngine
 from app.sample_data import SAMPLE_PROMPTS
 
 app = FastAPI(
@@ -28,6 +28,7 @@ app.add_middleware(
 )
 
 engine = Needle3InferenceEngine()
+quick_engine = Needle3QuickInferenceEngine()
 
 # In-memory storage for saved onboarding submissions
 ONBOARDING_REGISTRY: List[Dict[str, Any]] = []
@@ -63,6 +64,22 @@ def extract_artisan_form(req: ExtractionRequest):
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference engine error: {str(e)}")
+
+@app.post("/api/extract-quick-artisan", response_model=ExtractionResponse)
+def extract_quick_artisan_form(req: ExtractionRequest):
+    """
+    Extracts minimal 3-field artisan onboarding information (Name, Phone, Pehchan ID)
+    using the lightweight dedicated Needle 3 Quick Engine.
+    """
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="Input text cannot be empty.")
+
+    try:
+        req.quick_mode = True
+        response = quick_engine.extract(req)
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Quick engine error: {str(e)}")
 
 @app.post("/api/submit-onboarding")
 def submit_onboarding(form: ArtisanOnboardingForm):
