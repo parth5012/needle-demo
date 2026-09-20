@@ -8,11 +8,6 @@
       "PYTHON_VERSION": "3.12"
     }
   },
-  "functions": {
-    "api/*.py": {
-      "runtime": "python3.12"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
