@@ -118,12 +118,14 @@ export function App() {
     setSubmitSuccess(null);
 
     try {
-      const res = await fetch('/api/extract-artisan', {
+      const endpoint = mode === 'quick' ? '/api/extract-quick-artisan' : '/api/extract-artisan';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: inputText,
-          model_name: engineMode === 'neural' ? 'needle-3-local' : 'needle-3-heuristic'
+          model_name: engineMode === 'neural' ? 'needle-3-local' : 'needle-3-heuristic',
+          quick_mode: mode === 'quick'
         })
       });
 
@@ -408,7 +410,7 @@ export function App() {
                 {inputText.trim().split(/\s+/).filter(Boolean).length} words • {inputText.length} chars
                 {engineMode === 'neural' && (
                   <span className="ml-2 text-amber-400/80 font-mono text-[11px] hidden sm:inline">
-                    (Neural token generation takes ~15s on CPU)
+                    {mode === 'quick' ? '(Quick 3-field neural ~3-5s on CPU)' : '(Full schema neural ~15-25s on CPU)'}
                   </span>
                 )}
               </div>
@@ -424,12 +426,16 @@ export function App() {
                 {isExtracting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    {engineMode === 'neural' ? 'Running Needle 3 Neural...' : 'Extracting (Fast)...'}
+                    {engineMode === 'neural' 
+                      ? (mode === 'quick' ? 'Running Quick Needle 3 (3-Fields)...' : 'Running Needle 3 Full Neural...') 
+                      : 'Extracting (Fast)...'}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    {engineMode === 'neural' ? 'Extract with Needle 3 Neural' : 'Instant Extract (Fast)'}
+                    {engineMode === 'neural' 
+                      ? (mode === 'quick' ? 'Extract 3-Fields with Needle 3' : 'Extract Full Record with Needle 3') 
+                      : (mode === 'quick' ? 'Instant Quick Extract' : 'Instant Extract (Fast)')}
                   </>
                 )}
               </button>
