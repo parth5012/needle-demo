@@ -50,6 +50,15 @@ def test_channapatna_toy_maker_extraction(engine):
     assert res.form_data.pehchan_id == "PEH-KA-44912"
     assert res.form_data.years_experience == 12
 
+def test_single_word_name_and_comma_delimiters(engine):
+    text = "I am Parth,contact me at 9038749127, pehchan id PEH-GJ-71231"
+    req = ExtractionRequest(text=text)
+    res = engine.extract(req)
+
+    assert res.form_data.name == "Parth"
+    assert res.form_data.phone == "9038749127"
+    assert res.form_data.pehchan_id == "PEH-GJ-71231"
+
 def test_empty_or_minimal_text(engine):
     text = "Hello I make crafts."
     req = ExtractionRequest(text=text)

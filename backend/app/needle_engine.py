@@ -183,13 +183,13 @@ class Needle3InferenceEngine:
             extracted_entities=entities,
         )
 
-    STOP_NAME_WORDS = {"ba", "hai", "hu", "hain", "hove", "haye", "ani", "se", "aur", "and", "from", "in", "with", "a", "an", "the", "ki", "ka", "ke"}
+    STOP_NAME_WORDS = {"ba", "hai", "hu", "hain", "hove", "haye", "ani", "se", "aur", "and", "from", "in", "with", "a", "an", "the", "ki", "ka", "ke", "contact", "phone", "at", "to", "please", "call"}
 
     def _extract_name(self, text: str) -> Tuple[Optional[str], float, Optional[str]]:
         patterns = [
-            r"(?:my name is|i am|mera naam|naam|humar naam|name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})",
-            r"(?:artisan|shilpkar|weaver|craftsperson)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})",
-            r"^([A-Z][a-z]+\s+[A-Z][a-z]+),",
+            r"(?:my name is|i am|i'm|im|mera naam|naam|humar naam|name is)\s+([A-Za-z]+(?:\s+[A-Za-z]+){0,3})(?:,|\.|\s+contact|\s+phone|\s+from|\s+and|\s+with|\s+call|\s+pin|\s+pehchan|$)",
+            r"(?:artisan|shilpkar|weaver|craftsperson)\s+([A-Za-z]+(?:\s+[A-Za-z]+){0,2})",
+            r"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),",
         ]
         for p in patterns:
             m = re.search(p, text, re.IGNORECASE)
