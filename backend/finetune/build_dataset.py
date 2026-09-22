@@ -16,6 +16,12 @@ model learns on the fragments it will actually see. Each chunk keeps only the
 fields evidenced verbatim in that chunk; chunks with no evidenced fields become
 refusal examples (teaches no-hallucination on fragments like trailing
 GI-tag sentences).
+
+Round 4: LONG_TWO_ID gains dialect + terse two-ID rows (Bhojpuri/Maithili/
+Telugu/Bengali/Punjabi/Nagpuri/Marwari/Kannada sentences sharing both IDs,
+unlabeled comma pairs, jam-clauses, no-TRIFED variants) targeting the round-3
+failure mode: pehchan_id dropped (74%) when a second ID follows in the same
+sentence or list. Every row's reasoning repeats: BOTH IDs in ONE call.
 """
 import json
 import os
@@ -90,6 +96,12 @@ REFUSALS = [
 # Round 2 (post-training diagnosis): the full-length UI preset (~470 chars,
 # two IDs in one dialect sentence) made the tuned model file PEH- under the
 # TRIFED value. These long two-ID examples teach per-prefix routing in situ.
+#
+# Round 4 (post-training diagnosis, round-3 weights @ 23/35): pehchan_id is
+# the dropped field (74%) whenever two IDs share one dialect sentence or a
+# terse comma list — the model emits TRIFED- but skips PEH-. These rows force
+# a single tool call that carries BOTH IDs (plus jam-clause and no-trifed
+# variants), routed by prefix, nothing dropped.
 LONG_TWO_ID = [
     ("Pranam! Humar naam Gauri Devi ba. Hum Varanasi Handloom Cluster me pichhle 18 years se authentic Banarasi brocade aur pure silk saree bunat baani. Contact number 9876543210 ba aur humar security pin 1234 rakhla ba. Humaar government Pehchan ID PEH-IND-88320 ha aur TRIFED registration number TRIFED-UP-VNS-1049 ba. Hum Banarasi Brocade GI tagged saari banawat baani.",
      {"name": "Gauri Devi", "phone": "9876543210", "pin": "1234", "pehchan_id": "PEH-IND-88320", "trifed_id": "TRIFED-UP-VNS-1049"},
@@ -103,6 +115,50 @@ LONG_TWO_ID = [
     ("Hello, my name is Kavita Singh from Jaipur Blue Pottery cluster with 15 years of experience. You can reach me on 9829012345 and my security pin is 4455. My TRIFED registration is TRIFED-RJ-JPR-1188 and my Pehchan card is PEH-RJ-31230.",
      {"name": "Kavita Singh", "phone": "9829012345", "pin": "4455", "pehchan_id": "PEH-RJ-31230", "trifed_id": "TRIFED-RJ-JPR-1188"},
      "English long form with 15 years experience (not phone); TRIFED-first order still routes by prefix."),
+    # --- Round 4: dialect two-ID sentences (pehchan first, then trifed) ---
+    ("Pranam! Humar naam Shivani Devi ba, Bhagalpur silk cluster se. Contact 9431212345, pin 5566. Sarkari Pehchan ID PEH-BR-44120 ha aur TRIFED registration TRIFED-BR-BGP-6610 ba.",
+     {"name": "Shivani Devi", "phone": "9431212345", "pin": "5566", "pehchan_id": "PEH-BR-44120", "trifed_id": "TRIFED-BR-BGP-6610"},
+     "Bhojpuri two-ID sentence: PEH-BR-44120 -> pehchan_id AND TRIFED-BR-BGP-6610 -> trifed_id, BOTH in one call; never drop the PEH- value when a TRIFED- value follows it."),
+    ("Pranam, humar naam Priya Mishra achhi, Darbhanga, Bihar se. Mithila painting cluster me 12 years se kaaj ba. Mobile 9431412345, pin 3434. Pehchan ID PEH-BR-62130 ha aur TRIFED number TRIFED-BR-DBR-7715. Hamar kala Madhubani Paintings GI tag laabhla achhi.",
+     {"name": "Priya Mishra", "phone": "9431412345", "pin": "3434", "pehchan_id": "PEH-BR-62130", "trifed_id": "TRIFED-BR-DBR-7715"},
+     "Maithili long narrative with GI tail: both IDs share one sentence — PEH-BR-62130 -> pehchan_id and TRIFED-BR-DBR-7715 -> trifed_id in the same call."),
+    ("Namaste, nenu Ravi Teja, Kondapalli Bommallu Cluster nundi. Phone 9491112345, pin 4545. Pehchan ID PEH-AP-73140 mariyu TRIFED ID TRIFED-AP-VJA-8825.",
+     {"name": "Ravi Teja", "phone": "9491112345", "pin": "4545", "pehchan_id": "PEH-AP-73140", "trifed_id": "TRIFED-AP-VJA-8825"},
+     "Telugu narrative: mariyu-joined two-ID sentence; emit both PEH-AP-73140 and TRIFED-AP-VJA-8825 in one call, routed by prefix."),
+    ("Nomoshkar, ami Arpita Sen, Bishnupur Baluchari cluster theke. Phone 9830212345, pin 5656. Pehchan ID PEH-WB-92150 ha aur TRIFED ID TRIFED-WB-BSH-6635.",
+     {"name": "Arpita Sen", "phone": "9830212345", "pin": "5656", "pehchan_id": "PEH-WB-92150", "trifed_id": "TRIFED-WB-BSH-6635"},
+     "Bengali narrative: two IDs one sentence; PEH-WB-92150 -> pehchan_id and TRIFED-WB-BSH-6635 -> trifed_id together, never one without the other."),
+    ("Sat Sri Akal! Mera naam Gurpreet Singh hai, Amritsar Phulkari cluster ton. Phone 9872112345, pin 6767. Pehchan ID PEH-PB-83160 hai ate TRIFED ID TRIFED-PB-ASR-7745.",
+     {"name": "Gurpreet Singh", "phone": "9872112345", "pin": "6767", "pehchan_id": "PEH-PB-83160", "trifed_id": "TRIFED-PB-ASR-7745"},
+     "Punjabi narrative: ate-joined two-ID sentence; both PEH-PB-83160 and TRIFED-PB-ASR-7745 in one call by prefix."),
+    ("Johar! Humra naam Munna Lal hai, Ranchi Dokra cluster se. Sampark 9771412345, pin 5757. Pehchan PEH-JH-73170 ha aur TRIFED TRIFED-JH-RNC-8855.",
+     {"name": "Munna Lal", "phone": "9771412345", "pin": "5757", "pehchan_id": "PEH-JH-73170", "trifed_id": "TRIFED-JH-RNC-8855"},
+     "Nagpuri narrative: unlabeled Pehchan/TRIFED pair in one sentence; emit BOTH IDs, PEH-JH-73170 and TRIFED-JH-RNC-8855."),
+    ("Ram ram sa! Mharo naam Bhavna Joshi hai, Jodhpur wooden handicraft cluster se. Phone 9825112345, pin 8686. Pehchan ID PEH-RJ-94180 chhe ane TRIFED registration TRIFED-RJ-JDH-6645.",
+     {"name": "Bhavna Joshi", "phone": "9825112345", "pin": "8686", "pehchan_id": "PEH-RJ-94180", "trifed_id": "TRIFED-RJ-JDH-6645"},
+     "Marwari narrative: two IDs one sentence; PEH-RJ-94180 -> pehchan_id and TRIFED-RJ-JDH-6645 -> trifed_id, both in the same call."),
+    ("Namaskara, I am Girish Rao from Channapatna. Phone 9886112345, pin 1919. Pehchan ID PEH-KA-55190 mattu TRIFED ID TRIFED-KA-CHN-9965.",
+     {"name": "Girish Rao", "phone": "9886112345", "pin": "1919", "pehchan_id": "PEH-KA-55190", "trifed_id": "TRIFED-KA-CHN-9965"},
+     "Kannada narrative: mattu-joined two-ID sentence; emit both PEH-KA-55190 and TRIFED-KA-CHN-9965 together."),
+    # --- Round 4: terse/jam shapes (the exact eval failing forms) ---
+    ("Kavita Singh here, Jaipur Blue Pottery. Contact 9829012345, pin 4455. Pehchan PEH-RJ-31230, TRIFED TRIFED-RJ-JPR-1188.",
+     {"name": "Kavita Singh", "phone": "9829012345", "pin": "4455", "pehchan_id": "PEH-RJ-31230", "trifed_id": "TRIFED-RJ-JPR-1188"},
+     "Terse comma-separated ID pair with no 'ID' word: PEH-RJ-31230 -> pehchan_id, TRIFED-RJ-JPR-1188 -> trifed_id; both must appear even when unlabeled."),
+    ("Lakshmi Amma, Kondapalli cluster, phone 9490123456 pin 2233, IDs PEH-AP-67120 and TRIFED-AP-KRI-9031 for verification.",
+     {"name": "Lakshmi Amma", "phone": "9490123456", "pin": "2233", "pehchan_id": "PEH-AP-67120", "trifed_id": "TRIFED-AP-KRI-9031"},
+     "Everything jammed in one clause: one call carries name, phone, pin, pehchan_id AND trifed_id — nothing dropped."),
+    ("Rekha Devi, Bagru cluster Jaipur. Phone 9785012345, pin 8899. TRIFED TRIFED-RJ-JPR-2204, Pehchan PEH-RJ-78120.",
+     {"name": "Rekha Devi", "phone": "9785012345", "pin": "8899", "pehchan_id": "PEH-RJ-78120", "trifed_id": "TRIFED-RJ-JPR-2204"},
+     "TRIFED mentioned first in a terse comma pair; still route by prefix — PEH-RJ-78120 -> pehchan_id even though it comes last."),
+    ("Suresh Prajapati, Khurja Pottery. Sampark 9837012345, pin 1010 aur Pehchan PEH-UP-55671 ha.",
+     {"name": "Suresh Prajapati", "phone": "9837012345", "pin": "1010", "pehchan_id": "PEH-UP-55671"},
+     "No TRIFED present: pehchan PEH-UP-55671 must still be emitted after pin; missing fields stay absent, present fields never dropped."),
+    ("Mohan Lal, Moradabad brass cluster. Phone 9412012345, pin 6677, Pehchan PEH-UP-40981, TRIFED TRIFED-UP-MBD-5520 ek line me.",
+     {"name": "Mohan Lal", "phone": "9412012345", "pin": "6677", "pehchan_id": "PEH-UP-40981", "trifed_id": "TRIFED-UP-MBD-5520"},
+     "Four data fields in one clause: single call with phone, pin, pehchan_id and trifed_id together — prefix routing, nothing dropped."),
+    ("Asha Ben, Patan Patola cluster. Contact number 9879112345, pin no. 2020, Pehchan card PEH-GJ-34451 aur TRIFED number TRIFED-GJ-PTN-6710.",
+     {"name": "Asha Ben", "phone": "9879112345", "pin": "2020", "pehchan_id": "PEH-GJ-34451", "trifed_id": "TRIFED-GJ-PTN-6710"},
+     "'Pehchan card ... aur TRIFED number ...' in one sentence: emit PEH-GJ-34451 and TRIFED-GJ-PTN-6710 together."),
 ]
 
 VARIANTS = [
@@ -110,6 +166,10 @@ VARIANTS = [
     ("Pranam! Humar naam {name} ba. Contact number {phone} ba aur security pin {pin} ba. Pehchan ID {peh} ha aur TRIFED number {tri} ba.", "Bhojpuri template with possessives."),
     ("Namaskara, I am {name}, {place} artisan. Reach me at {phone}, pin {pin}. Pehchan card {peh}, TRIFED ID {tri}.", "Greeting-led template; name never the greeting."),
     ("{name} | {phone} | {pin} | {peh} | {tri}", "Pipe-delimited terse template."),
+    ("{name}, {place}. Phone {phone}, pin {pin}. TRIFED registration {tri} and Pehchan ID {peh}.", "TRIFED mentioned before Pehchan; prefix routing."),
+    ("Ram ram! Humaar naam {name} ba, {place} se. Mobile {phone}, pin {pin}. Pehchan {peh}, TRIFED {tri}.", "Awadhi dialect template."),
+    ("Humaar naam {name} ba, {place} se. Mobile: {phone}, PIN {pin}. Pehchan {peh}, TRIFED {tri}.", "Mobile label with PIN template."),
+    ("Namaste, I am {name} from {place}. Contact number {phone}, pin no. {pin}. Pehchan {peh}, TRIFED {tri}.", "Pin no. phrasing template."),
 ]
 
 PEOPLE = [
@@ -180,6 +240,9 @@ def main():
     emit(rows, "Namaste, Meera Nair here, pehchan PEH-KL-88120, contact 9847012345.",
          {"name": "Meera Nair", "phone": "9847012345", "pehchan_id": "PEH-KL-88120"},
          "Namaste is greeting; name Meera Nair; PEH- -> pehchan_id; 10-digit -> phone.")
+    emit(rows, "Contact 9437012345 for Pipapli applique orders, pehchan PEH-OD-51230.",
+         {"phone": "9437012345", "pehchan_id": "PEH-OD-51230"},
+         "No name present in text; contact -> phone; PEH- -> pehchan_id.")
     out = os.path.join(HERE, "artisan_main.jsonl")
     with open(out, "w", encoding="utf-8") as h:
         for r in rows:
