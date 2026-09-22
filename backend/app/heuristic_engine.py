@@ -184,21 +184,30 @@ class DeterministicHeuristicExtractor:
         return None, 0.0, None
 
     def extract_pehchan(self, text: str) -> Tuple[Optional[str], float, Optional[str]]:
-        match = re.search(r"(?:pehchan|pehchan\s*card|pehchan\s*id)[:\s]*([A-Z0-9\-_]{6,20})", text, re.IGNORECASE)
-        if match:
-            return match.group(1).upper(), 0.96, match.group(0)
+        # Prefer explicit PEH-... identifiers over loose "Pehchan <word>" captures.
         match_general = re.search(r"\b(PEH-[A-Z0-9\-]+)\b", text, re.IGNORECASE)
         if match_general:
             return match_general.group(1).upper(), 0.97, match_general.group(0)
+        match = re.search(r"(?:pehchan|pehchan\s*card|pehchan\s*id)[:\s]*([A-Z0-9\-_]{6,20})", text, re.IGNORECASE)
+        if match:
+            token = match.group(1)
+            # Guard: bare words (e.g. "card", "number") are not IDs; require a digit or hyphen.
+            if re.search(r"[\d\-]", token):
+                return token.upper(), 0.96, match.group(0)
         return None, 0.0, None
 
     def extract_trifed(self, text: str) -> Tuple[Optional[str], float, Optional[str]]:
-        match = re.search(r"(?:trifed|trifed\s*id)[:\s]*([A-Z0-9\-_]{6,25})", text, re.IGNORECASE)
-        if match:
-            return match.group(1).upper(), 0.96, match.group(0)
+        # Prefer explicit TRIFED-... identifiers over loose "TRIFED <word>" captures
+        # (e.g. "TRIFED registration number ..." must not yield "REGISTRATION").
         match_general = re.search(r"\b(TRIFED-[A-Z0-9\-]+)\b", text, re.IGNORECASE)
         if match_general:
             return match_general.group(1).upper(), 0.97, match_general.group(0)
+        match = re.search(r"(?:trifed|trifed\s*id)[:\s]*([A-Z0-9\-_]{6,25})", text, re.IGNORECASE)
+        if match:
+            token = match.group(1)
+            # Guard: bare words (e.g. "registration") are not IDs; require a digit or hyphen.
+            if re.search(r"[\d\-]", token):
+                return token.upper(), 0.96, match.group(0)
         return None, 0.0, None
 
     def extract_cluster_and_location(self, text: str) -> Dict[str, Tuple[Optional[str], float, Optional[str]]]:

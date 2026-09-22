@@ -39,5 +39,12 @@ dist
 .env.test.local
 .env.production.local
 
+# Needle 3 model weights (downloaded via `needle download needle3`, ~35MB)
+# + local LoRA adapters / finetuned exports (see backend/finetune/README.md)
+*.cact
+needle3.cact
+*.safetensors
+backend/checkpoints/
+
 # Temporary OpenCode files
 .tmp/

@@ -1,3 +1,4 @@
+import os
 import uuid
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
@@ -9,7 +10,12 @@ from app.schemas import (
     ArtisanOnboardingForm,
     QuickArtisanOnboardingForm,
 )
-from app.needle_engine import Needle3InferenceEngine, Needle3QuickInferenceEngine
+from app.needle_engine import (
+    Needle3InferenceEngine,
+    Needle3QuickInferenceEngine,
+    NEEDLE3_AVAILABLE,
+    _resolve_main_weights,
+)
 from app.sample_data import SAMPLE_PROMPTS
 
 app = FastAPI(
@@ -44,7 +50,44 @@ def root():
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "engine": "needle-3-local", "version": "1.0.0"}
+    """Reports service health plus live Needle 3 neural engine status.
+
+    `needle3.available` is True only when the `cactus-needle` package imports;
+    `weights_cached` / `engine_cached` confirm the downloaded `needle3.cact`
+    weights and native engine library are present. When `available` is False
+    (or a request uses `model_name: needle-3-heuristic/fast`), inference
+    silently degrades to the deterministic regex fallback — check
+    `model_used` and per-field `source_segment` in extraction responses.
+    """
+    weights_cached: bool = False
+    engine_cached: bool = False
+    main_weights: str | None = None
+    try:
+        main_weights = _resolve_main_weights()
+    except Exception:
+        main_weights = None
+    try:
+        from needle.agent import fetch as _fetch
+
+        weights_path = os.path.join(_fetch.cache_dir(3), _fetch.base_weights(3))
+        weights_cached = os.path.exists(weights_path)
+        lib_path = os.path.join(_fetch.cache_dir(3), _fetch._lib_name())
+        engine_cached = os.path.exists(lib_path)
+    except Exception:
+        pass
+    return {
+        "status": "healthy",
+        "engine": "needle-3-local",
+        "version": "1.0.0",
+        "needle3": {
+            "available": NEEDLE3_AVAILABLE,
+            "weights_cached": weights_cached,
+            "engine_cached": engine_cached,
+            "neural_by_default": True,
+            "main_weights": main_weights,
+            "main_finetuned": main_weights is not None,
+        },
+    }
 
 @app.get("/api/sample-prompts", response_model=List[SamplePrompt])
 def get_sample_prompts():

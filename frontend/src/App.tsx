@@ -53,7 +53,7 @@ const INITIAL_QUICK_FORM: QuickArtisanOnboardingForm = {
 
 export function App() {
   const [mode, setMode] = useState<'quick' | 'full'>('quick');
-  const [engineMode, setEngineMode] = useState<'fast' | 'neural'>('fast');
+  const [engineMode, setEngineMode] = useState<'fast' | 'neural'>('neural');
   const [inputText, setInputText] = useState('');
   const [samplePrompts, setSamplePrompts] = useState<SamplePrompt[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
@@ -272,6 +272,9 @@ export function App() {
               <span className="px-2 py-0.5 text-[11px] font-mono bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full">
                 Artify Bharat
               </span>
+              <span className="px-2 py-0.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full" title="Main onboarding finetune target: name/phone/pin/pehchan_id/trifed_id (see backend/finetune)">
+                Main finetune-ready
+              </span>
             </div>
             <p className="text-xs text-slate-400">Zero-Shot Unstructured Text to Structured Form Filling</p>
           </div>
@@ -378,7 +381,7 @@ export function App() {
                         ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-sm'
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    title="Real on-device Cactus Needle 3 foundation model inference (~15-25s)"
+                    title="Real on-device Cactus Needle 3 foundation model inference (~20-45s)"
                   >
                     <Bot className="w-3 h-3 text-orange-400" />
                     🧠 Needle 3 Neural
@@ -410,7 +413,7 @@ export function App() {
                 {inputText.trim().split(/\s+/).filter(Boolean).length} words • {inputText.length} chars
                 {engineMode === 'neural' && (
                   <span className="ml-2 text-amber-400/80 font-mono text-[11px] hidden sm:inline">
-                    {mode === 'quick' ? '(Quick 3-field neural ~3-5s on CPU)' : '(Full schema neural ~15-25s on CPU)'}
+                    {mode === 'quick' ? '(Quick 3-field neural ~10-20s on CPU)' : '(Full schema neural ~20-45s on CPU)'}
                   </span>
                 )}
               </div>
