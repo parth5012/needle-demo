@@ -59,7 +59,7 @@ _NON_NAME_TOKENS = {
     "humaar", "hamaar", "humaara", "hamaara", "humra", "hamra",
     "hamre", "humre", "tumhar", "tumhara", "tohar", "tor", "mor",
     "mera", "meri", "mere", "naam", "main", "hum", "mai", "mein", "mujhe",
-    "aapka", "aapke",
+    "aapka", "aapke", "order", "orders", "applique",
 }
 
 
