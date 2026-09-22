@@ -42,19 +42,19 @@ _NEURAL_SYSTEM = (
 # greeting token never competes with the real name. This shapes the prompt
 # only; no field values are extracted by it.
 _LEADING_GREETING_RE = re.compile(
-    r"^(?:namaste|namaskara|pranam|hello|hi|vanakkam|kem\s+cho|radhe|ram\s+ram"
-    r"|namaskar|good\s+(?:morning|afternoon|evening))[\s,!.]*",
+    r"^(?:namaste|namaskara|pranam|hello|hi|vanakkam|nomoshkar|johar|kem\s+cho|radhe|ram\s+ram"
+    r"|sat\s+sri\s+akal|namaskar|good\s+(?:morning|afternoon|evening))[\s,!.]*",
     re.IGNORECASE,
 )
 
 _GREETING_WORDS = {
     "namaskara", "namaskar", "namaste", "pranam", "hello", "hi",
-    "vanakkam", "kem cho", "radhe", "ram ram",
+    "vanakkam", "nomoshkar", "johar", "kem cho", "radhe", "ram ram",
 }
 # Single-word tokens that can never be (part of) a person's name: places,
 # crafts, and Hindi/Bhojpuri pronouns/possessives ("humar naam ..." = "my name ...").
 _NON_NAME_TOKENS = {
-    "cluster", "craft", "handloom", "textile", "society", "ltd",
+    "cluster", "craft", "crafts", "handloom", "textile", "society", "ltd",
     "village", "district", "humar", "hamar", "humara", "hamara",
     "humaar", "hamaar", "humaara", "hamaara", "humra", "hamra",
     "hamre", "humre", "tumhar", "tumhara", "tohar", "tor", "mor",
@@ -173,6 +173,13 @@ def _collect_neural_fields(
                 continue
             str_val = str(val).strip()
             if k == "name":
+                # A real name never contains a comma; the model appends
+                # cluster/craft context after one ("Kiran Verma, Lucknow
+                # Chikankari"). Keep the segment before the first comma.
+                if "," in str_val:
+                    str_val = str_val.split(",")[0].strip()
+                    if not str_val:
+                        continue
                 lower_name = str_val.lower()
                 name_tokens = set(re.findall(r"[a-z]+", lower_name))
                 if lower_name in _GREETING_WORDS or (

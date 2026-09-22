@@ -76,6 +76,29 @@ files.download("checkpoints/needle3-artisan.cact")
 # optional: files.download("checkpoints/needle_artisan_lora.safetensors")
 ```
 
+## 3b. Score on the eval suite (do this before downloading)
+`finetune/eval_cases.json` holds 35 ground-truth cases: 4 UI presets, 8 dialect
+variants (Bhojpuri/Awadhi/Tamil/Gujarati/Telugu/Marwari/Nagpuri/Punjabi/Bengali/
+Malwi/Maithili), phone formats (+91/spaces/dashes), PIN phrasings, reversed ID
+order, same-sentence IDs, greetings, single-word/three-part names, partial
+fields (missing → null), 3 off-topic refusals, year-count traps, PIN-before-phone,
+GI-tail long narratives, pipe-delimited input.
+
+**Cell 5b — run the scorer (needs `pydantic`: `!pip -q install pydantic`):**
+```python
+!python /content/needle-demo/backend/finetune/eval.py \
+    --weights /content/needle-demo/backend/checkpoints/needle3-artisan.cact
+```
+Output: `cases 5/5 perfect: X/35`, per-field accuracy, and expected→got for
+every miss. Local baseline (round-3 weights + hardened validators):
+**23/35**, with phone/pin/trifed at 97% and misses clustering on `pehchan_id`
+in long two-ID dialect sentences (71%) and name edge cases (91%) — those two
+patterns are what the `LONG_TWO_ID` rows and the Nomoshkar/three-part-name/
+pin-first/terse rows in `build_dataset.py` target, so gains here are your
+green light. To debug one case: add `--limit 5` or narrow by editing the
+JSON. To compare base vs tuned, run once without `--weights` (base) and once
+with (tuned).
+
 ## 3. Install locally
 1. Copy the downloaded `needle3-artisan.cact` into
    `D:\work\projects\needle-demo\backend\checkpoints\`
