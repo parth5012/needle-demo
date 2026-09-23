@@ -178,6 +178,7 @@ def _collect_neural_fields(
     allowed_keys: Tuple[str, ...],
     model_confidence: float,
     source_prefix: str,
+    chunk_text: str = "",
 ) -> Tuple[Dict[str, ExtractedFieldMeta], List[Dict[str, Any]], List[str]]:
     """Validate raw tool calls into fields. Scans ALL returned calls
     (not just the first) and keeps the first valid value per key."""
@@ -188,10 +189,22 @@ def _collect_neural_fields(
         if not isinstance(call, dict):
             continue
         args = call.get("arguments") or {}
+
+        # Slot correction: if model placed an ID value in a non-ID slot (e.g. pin or phone)
+        # or swapped slots, re-route it to its actual ID slot.
+        clean_args = dict(args)
+        for ak, av in list(clean_args.items()):
+            slot = _id_slot(av)
+            if slot and slot != ak:
+                if slot not in clean_args or not clean_args[slot]:
+                    clean_args[slot] = av
+                if ak in ("pin", "phone"):
+                    del clean_args[ak]
+
         for k in allowed_keys:
             if k in fields:
                 continue
-            val = args.get(k)
+            val = clean_args.get(k)
             if val is None or str(val).strip() == "":
                 continue
             str_val = str(val).strip()
@@ -236,6 +249,16 @@ def _collect_neural_fields(
                 # value (PEH- under trifed_id) must keep its prefix so
                 # _fix_swapped_ids can route it; prepending would fuse both
                 # prefixes ("PEH-TRIFED-...") and destroy the signal.
+                # Align to verbatim text ID if present in chunk_text
+                if chunk_text:
+                    prefix = "TRIFED-" if k == "trifed_id" else "PEH-"
+                    cand_ids = re.findall(rf"\b{prefix}[A-Z0-9\-]+", chunk_text, re.IGNORECASE)
+                    suffix = str_val.split("-")[-1]
+                    for cand in cand_ids:
+                        if cand.upper().endswith(suffix.upper()):
+                            str_val = cand.upper()
+                            break
+
                 u = str_val.upper()
                 if k == "trifed_id" and not u.startswith(("TRIFED-", "PEH-")):
                     str_val = "TRIFED-" + str_val
@@ -323,11 +346,26 @@ def _neural_complete_best(
     merged_entities: List[Dict[str, Any]] = []
     best_confidence = 0.0
     total_infer_ms = 0.0
-    for ci, chunk in enumerate(chunks):
+    attempts = max_attempts
+    for attempt in range(1, attempts + 1):
         if set(allowed_keys) <= set(merged_fields.keys()):
             break
-        attempts = max_attempts
-        for attempt in range(1, attempts + 1):
+        if (time.perf_counter() - budget_start) >= time_budget_s:
+            break
+        for ci, chunk in enumerate(chunks):
+            if set(allowed_keys) <= set(merged_fields.keys()):
+                break
+            if attempt > 1:
+                missing = set(allowed_keys) - set(merged_fields.keys())
+                chunk_has_evidence = (
+                    ("name" in missing)
+                    or ("phone" in missing)
+                    or ("pin" in missing and bool(re.search(r"\bpin\b", chunk, re.I)))
+                    or ("pehchan_id" in missing and bool(re.search(r"peh|card", chunk, re.I)))
+                    or ("trifed_id" in missing and bool(re.search(r"trifed", chunk, re.I)))
+                )
+                if not chunk_has_evidence:
+                    continue
             elapsed_s = time.perf_counter() - budget_start
             if elapsed_s >= time_budget_s:
                 logger.info(
@@ -353,6 +391,7 @@ def _neural_complete_best(
                 ),
                 model_confidence=model_confidence or 0.95,
                 source_prefix=source_prefix,
+                chunk_text=chunk,
             )
             for k, meta in fresh_calls_fields.items():
                 if k not in merged_fields:
@@ -381,9 +420,9 @@ def _neural_complete_best(
             # leaving later ID-bearing chunks a single decode attempt — one bad
             # sample silently dropped pehchan_id. Bounded by max_attempts and
             # the time budget, so latency stays capped.
-            if all(k in merged_fields for k in allowed_keys):
+            if set(allowed_keys) <= set(merged_fields.keys()):
                 break
-        if time.perf_counter() - budget_start >= time_budget_s:
+        if (time.perf_counter() - budget_start) >= time_budget_s:
             break
     _fix_swapped_ids(merged_fields, merged_entities)
     return merged_fields, merged_entities, sorted(merged_fields.keys()), best_confidence, total_infer_ms
