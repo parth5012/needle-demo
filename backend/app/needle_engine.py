@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import time
@@ -24,6 +25,28 @@ except ImportError:
 
 _SHARED_NEURAL_AGENT = None
 _NEURAL_AGENT_INITIALIZED = False
+
+
+def _load_main_tool_schema() -> Optional[Dict[str, Any]]:
+    """Load the MAIN tool schema from finetune/artisan_schema.json.
+
+    That file is the single source of truth shared with training
+    (build_dataset.py embeds it in every finetune row). The finetuned model
+    is extremely sensitive to prompt drift: an inline schema whose phone
+    description gained an extra clause made the r4 model drop pehchan_id on
+    every decode (0/4 vs 4/4 with the file schema). Loading the file keeps
+    runtime prompts byte-identical to training prompts.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.normpath(os.path.join(here, "..", "finetune", "artisan_schema.json"))
+    try:
+        with open(path, encoding="utf-8") as f:
+            schema = json.load(f)
+        if isinstance(schema, dict):
+            return schema
+    except (OSError, ValueError) as e:
+        logger.warning("[NEEDLE_3_STATUS] Could not load %s: %s", path, e)
+    return None
 
 _SHARED_QUICK_NEURAL_AGENT = None
 _QUICK_NEURAL_AGENT_INITIALIZED = False
@@ -352,7 +375,13 @@ def _neural_complete_best(
                 sorted(fresh_calls_fields.keys()), sorted(merged_fields.keys()),
                 model_confidence,
             )
-            if all(k in merged_fields for k in required_keys):
+            # Keep retrying while ANY allowed field is still missing (not just
+            # the required core): with required_keys=("name", "phone") the loop
+            # previously stopped after the first chunk that yielded those two,
+            # leaving later ID-bearing chunks a single decode attempt — one bad
+            # sample silently dropped pehchan_id. Bounded by max_attempts and
+            # the time budget, so latency stays capped.
+            if all(k in merged_fields for k in allowed_keys):
                 break
         if time.perf_counter() - budget_start >= time_budget_s:
             break
@@ -421,20 +450,9 @@ def get_shared_neural_agent():
     if NEEDLE3_AVAILABLE and needle is not None:
         try:
             logger.info("[NEEDLE_3_STATUS] Initializing Cactus Needle 3 neural engine (needle3.cact)...")
-            schema = {
-                "name": "ArtisanNeuralProfile",
-                "description": "Extract artisan identity and registration details",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "Full personal name of the artisan person (never a greeting, place, or craft)"},
-                        "phone": {"type": "string", "description": "10-digit mobile phone number starting with 6, 7, 8 or 9, copied exactly as written (this is not the 4-digit security PIN, and never a year-count like '18 years')"},
-                        "pin": {"type": "string", "description": "4-digit security PIN copied exactly as written (this is not the phone number)"},
-                        "pehchan_id": {"type": "string", "description": "Government Pehchan card ID copied exactly as written (starts with PEH-)"},
-                        "trifed_id": {"type": "string", "description": "Government TRIFED registration ID copied exactly as written (starts with TRIFED-)"},
-                    }
-                }
-            }
+            # Schema MUST match finetune/artisan_schema.json byte-for-byte: it
+            # is the prompt the finetune trained on (see _load_main_tool_schema).
+            schema = _load_main_tool_schema()
             tuned_weights = _resolve_main_weights()
             _SHARED_NEURAL_AGENT = needle.Needle(
                 tools=[schema],
